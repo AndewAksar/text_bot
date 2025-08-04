@@ -13,9 +13,7 @@ from config.triggers import TRIGGERS
 from utils.response import respond
 
 
-
 logger = logging.getLogger(__name__)
-
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обрабатывает текстовые сообщения в целевой группе.

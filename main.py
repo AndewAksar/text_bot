@@ -11,10 +11,8 @@ from utils.logging import setup_logging
 from utils.response import error_handler
 
 
-
 # Инициализируем логгер
 logger = setup_logging()
-
 
 def main() -> None:
     """Запускает Telegram-бота.
@@ -40,7 +38,6 @@ def main() -> None:
         app.run_polling()
     except Exception as e:
         logger.error(f"Ошибка при запуске бота: {e}")
-
 
 # Запускаем модуль в режиме main
 if __name__ == '__main__':

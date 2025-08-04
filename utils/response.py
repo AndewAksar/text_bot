@@ -10,9 +10,7 @@ from telegram.error import TelegramError
 from config.triggers import Trigger
 
 
-
 logger = logging.getLogger(__name__)
-
 
 async def respond(update: Update, trigger: Trigger, chat_id: int) -> None:
     """Отправляет ответ в чат на основе конфигурации триггера.
@@ -39,7 +37,6 @@ async def respond(update: Update, trigger: Trigger, chat_id: int) -> None:
         # Проверяем типичные ошибки доступа
         if "chat not found" in str(e).lower() or "blocked" in str(e).lower():
             logger.error(f"Бот не имеет доступа к чату {chat_id}. Проверьте права бота.")
-
 
 async def error_handler(update: Update, context: None) -> None:
     """Обрабатывает ошибки, возникающие при работе бота.
