@@ -4,9 +4,12 @@
 """
 
 import random
+import os
+import json
 from dataclasses import dataclass
+from http.client import responses
 from typing import Callable, List, Union
-
+from dotenv import load_dotenv
 
 
 @dataclass
@@ -20,113 +23,40 @@ class Trigger:
         log: Сообщение для логирования при срабатывании триггера.
         root_match: Если True, ищет подстроку, иначе точное совпадение слова.
     """
-    pattern: str
-    response: Union[str, Callable[[], str]]
-    delay: int
-    log: str
-    root_match: bool = False
+    pattern: str                                # Регулярное выражение для поиска триггера
+    response: Union[str, Callable[[], str]]     # Строка ответа или функция для генерации ответа
+    delay: int                                  # Задержка перед отправкой ответа
+    log: str                                    # Сообщение для логирования при срабатывании триггера
+    root_match: bool = False                    # Использовать подстроку или точное совпадение
 
-
-# Список ключевых слов для общего триггера
-TRIGGER_WORDS = ["сук", "хуй", "хуе", "пизд", "блят", "бляд", "еба", "ёба", "пидор"]
-
+# Загружаем переменные из .env
+load_dotenv()
 
 # Список случайных ответов для общего триггера
-RESPONSES = [
-    'Я бы тебя, ахуевшего, на фронт отправил.',
-    "Смерть либералам!",
-    "Я бы с огромным удовольствием кого-нибудь порезал и съел... тебя например."
-]
+RESPONSES = os.getenv("RESPONSES", "").split("|")
 
+def load_triggers(file_path: str) -> List[Trigger]:
+    """Загружает триггеры из JSON-файла."""
+    with open(file_path, 'r', encoding='utf-8') as f:
+        triggers_data = json.load(f)
 
-# Список всех триггеров с их настройками
-TRIGGERS: List[Trigger] = [
-    Trigger(
-        pattern='|'.join(TRIGGER_WORDS),  # Объединяем слова в одно регулярное выражение
-        response=lambda: random.choice(RESPONSES),  # Случайный выбор ответа
-        delay=3,
-        log="корень ключевого слова",
-        root_match=True
-    ),
-    Trigger(
-        pattern=r'^да$',  # Точное совпадение слова "да"
-        response='пизда',
-        delay=1,
-        log="слово 'да'"
-    ),
-    Trigger(
-        pattern='вова',
-        response='кому Вова, а кому Владимир Геннадьевич, щегол.',
-        delay=6,
-        log="корень 'вова'",
-        root_match=True
-    ),
-    Trigger(
-        pattern=r'\bволодя\b',  # Точное совпадение слова "володя"
-        response='Че вы всё недовольны? Живите по кайфу, пока не сдохли.',
-        delay=5,
-        log="слово 'володя'"
-    ),
-    Trigger(
-        pattern='путин',
-        response='Ты что ссышь блядь за Родину подохнуть?',
-        delay=3,
-        log="корень 'путин'",
-        root_match=True
-    ),
-    Trigger(
-        pattern=r'\bвалить\b',
-        response='Ты, нищеброд, куда собрался валить?',
-        delay=3,
-        log="слово 'валить'"
-    ),
-    Trigger(
-        pattern='войн',
-        response='Ты не гони, война это праздник.',
-        delay=2,
-        log="корень 'войн'",
-        root_match=True
-    ),
-    Trigger(
-        pattern='чур',
-        response='Ахмат - сила!',
-        delay=3,
-        log="корень 'чур'",
-        root_match=True
-    ),
-    Trigger(
-        pattern='ядер',
-        response='Вооружайтесь, парни, большой пиздец не за горами!',
-        delay=5,
-        log="корень 'ядер'",
-        root_match=True
-    ),
-    Trigger(
-        pattern='атом',
-        response='Я давно говорю: вооружайтесь - грядут страшные времена.',
-        delay=5,
-        log="корень 'атом'",
-        root_match=True
-    ),
-    Trigger(
-        pattern='хох',
-        response='Убивать врагов это так сладко!',
-        delay=3,
-        log="корень 'хох'",
-        root_match=True
-    ),
-    Trigger(
-        pattern='коррупци',
-        response='Либерал есть либерал: что ни слово то - пиздешь, что второе - пропаганда. Нахуй вас.',
-        delay=3,
-        log="корень 'коррупци'",
-        root_match=True
-    ),
-    Trigger(
-        pattern='мотоцикл',
-        response='Ненавижу хрустов, конченые уроды. Хотят подохнуть - пущай на войну едут. Хоть какая-то польза от этого биомусора.',
-        delay=3,
-        log="корень 'мотоцикл'",
-        root_match=True
-    ),
-]
+    triggers = []
+    for trigger_data in triggers_data:
+        # Если response — список, используем TRIGGER_WORDS и RESPONSES из .env
+        if trigger_data.get('use_env_response', False):
+            # Вычисляем случайный ответ и помещаем в переменную
+            response_func = lambda: random.choice(RESPONSES)
+        else:
+            response_func = trigger_data['response']
+
+        triggers.append(Trigger(
+            pattern=trigger_data['pattern'],
+            response=response_func,
+            delay=trigger_data['delay'],
+            log=trigger_data['log'],
+            root_match=trigger_data['root_match']
+        ))
+    return triggers
+
+# Загрузка триггеров из файла
+TRIGGERS = load_triggers('triggers.json')
