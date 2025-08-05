@@ -1,62 +1,113 @@
-import unittest
+import pytest
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
-from telegram import Update, Message, TelegramError
+import logging
+from unittest.mock import AsyncMock, Mock, call
+from telegram import Update, Chat, Message
+from telegram.error import TelegramError
+
+from utils.response import respond, error_handler
 from config.triggers import Trigger
-from utils.response import respond
 
-class TestResponse(unittest.TestCase):
-    def setUp(self):
-        """Инициализация перед каждым тестом."""
-        self.loop = asyncio.get_event_loop()
-        self.update = MagicMock(spec=Update)
-        self.context = MagicMock(spec=ContextTypes.DEFAULT_TYPE)
-        self.update.message = MagicMock(spec=Message)
-        self.update.message.chat_id = 12345
-        self.update.message.reply_text = AsyncMock()
 
-    async def test_respond_with_delay(self):
-        """Тест отправки ответа с задержкой."""
-        trigger = Trigger(
-            pattern=r"привет",
-            response="Привет, как дела?",
-            delay=1,
-            log="Ответ на приветствие"
-        )
-        with patch("asyncio.sleep", AsyncMock()):
-            await respond(self.update, trigger, self.update.message.chat_id)
-            asyncio.sleep.assert_awaited_with(1)
-            self.update.message.reply_text.assert_awaited_with("Привет, как дела?")
+# Фикстура для создания замоканного логгера
+@pytest.fixture
+def logger(monkeypatch):
+    logger = Mock()
+    logger.info = Mock()
+    logger.error = Mock()
+    # Подменяем логгер в модуле response
+    monkeypatch.setattr('utils.response.logger', logger)
+    return logger
 
-    async def test_respond_callable_response(self):
-        """Тест отправки ответа с функцией response."""
-        trigger = Trigger(
-            pattern=r"случайный",
-            response=lambda: "Ответ 1",
-            delay=0,
-            log="Случайный ответ"
-        )
-        await respond(self.update, trigger, self.update.message.chat_id)
-        self.update.message.reply_text.assert_awaited_with("Ответ 1")
 
-    async def test_respond_telegram_error(self):
-        """Тест обработки ошибки Telegram."""
-        trigger = Trigger(
-            pattern=r"привет",
-            response="Привет, как дела?",
-            delay=0,
-            log="Ответ на приветствие"
-        )
-        self.update.message.reply_text = AsyncMock(side_effect=TelegramError("Chat not found"))
-        with self.assertLogs("utils.response", level="ERROR") as cm:
-            await respond(self.update, trigger, self.update.message.chat_id)
-            self.assertIn("Бот не имеет доступа к чату", cm.output[0])
+# Фикстура для создания объекта Update
+@pytest.fixture
+def update():
+    update = Mock(spec=Update)
+    update.message = Mock(spec=Message)
+    update.message.reply_text = AsyncMock()
+    update.message.chat_id = -123456789
+    return update
 
-    def test_async_methods(self):
-        """Запуск асинхронных тестов."""
-        self.loop.run_until_complete(self.test_respond_with_delay())
-        self.loop.run_until_complete(self.test_respond_callable_response())
-        self.loop.run_until_complete(self.test_respond_telegram_error())
+# Фикстура для создания объекта Trigger со строковым ответом
+@pytest.fixture
+def string_trigger():
+    return Trigger(
+        pattern=r"test",
+        response="Test response",
+        delay=1,
+        log="test trigger",
+        root_match=False
+    )
 
-if __name__ == "__main__":
-    unittest.main()
+# Фикстура для создания объекта Trigger с вызываемым ответом
+@pytest.fixture
+def callable_trigger():
+    def mock_response():
+        return "Dynamic response"
+    return Trigger(
+        pattern=r"test",
+        response=mock_response,
+        delay=0,
+        log="dynamic trigger",
+        root_match=False
+    )
+
+# Фикстура для создания объекта Context с ошибкой
+@pytest.fixture
+def context():
+    context = Mock()
+    return context
+
+# Тест для функции respond со строковым ответом
+@pytest.mark.asyncio
+async def test_respond_with_string_response(update, string_trigger, logger, monkeypatch):
+    # Мокаем asyncio.sleep для проверки вызова задержки
+    monkeypatch.setattr(asyncio, 'sleep', AsyncMock())
+
+    await respond(update, string_trigger, update.message.chat_id)
+
+    # Проверки
+    update.message.reply_text.assert_awaited_once_with("Test response")
+    asyncio.sleep.assert_awaited_once_with(1)
+    logger.info.assert_called_with(f"Бот ответил в чате {update.message.chat_id} (test trigger)")
+
+# Тест для функции respond с ошибкой Telegram API
+@pytest.mark.asyncio
+async def test_respond_with_telegram_error(update, string_trigger, logger):
+    # Настраиваем ошибку при вызове reply_text
+    update.message.reply_text.side_effect = TelegramError("Chat not found")
+
+    await respond(update, string_trigger, update.message.chat_id)
+
+    update.message.reply_text.assert_awaited_once_with("Test response")
+    logger.error.assert_has_calls(
+        [
+            call(f"Ошибка Telegram в чате {update.message.chat_id}: Chat not found"),
+            call(f"Бот не имеет доступа к чату {update.message.chat_id}. Проверьте права бота.")
+        ]
+    )
+
+# Тест для функции error_handler с конфликтом getUpdates
+@pytest.mark.asyncio
+async def test_error_handler_with_conflict_error(context, logger):
+    # Настраиваем ошибку
+    context.error = Exception("Conflict: getUpdates conflict")
+
+    # Выполнение функции
+    await error_handler(None, context)
+
+    # Проверки
+    logger.error.assert_has_calls(
+        [
+            call("Ошибка: Conflict: getUpdates conflict"),
+            call("Конфликт getUpdates. Убедитесь, что запущен только один экземпляр бота.")
+        ]
+    )
+
+# Тест для функции error_handler с общей ошибкой
+@pytest.mark.asyncio
+async def test_error_handler_with_generic_error(context, logger):
+    context.error = Exception("Some error")
+    await error_handler(None, context)
+    logger.error.assert_called_with("Ошибка: Some error")
