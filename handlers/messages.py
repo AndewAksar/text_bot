@@ -12,9 +12,10 @@ from telegram.ext import ContextTypes
 from config.bot import GROUP_CHAT_ID
 from config.triggers import TRIGGERS
 from utils.response import respond
+from utils.logging import setup_logging
 
 
-logger = logging.getLogger(__name__)
+logger = setup_logging()
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обрабатывает текстовые сообщения в целевой группе.
@@ -41,6 +42,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         logger.debug(f"Пропуск ответа в чате {chat_id}: слишком частые сообщения")
         return
     context.bot_data[f"last_response_{chat_id}"] = current_time
+
+    # Ограничение длины сообщений
+    if len(message_text) > 1000:  # Ограничение на 1000 символов
+        logger.warning(f"Слишком длинное сообщение в чате {chat_id}")
+        return
 
     # Проверяем каждый триггер
     for trigger in TRIGGERS:

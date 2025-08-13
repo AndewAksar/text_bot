@@ -9,9 +9,10 @@ from telegram import Update
 from telegram.error import TelegramError
 
 from config.triggers import Trigger
+from utils.logging import setup_logging
 
 
-logger = logging.getLogger(__name__)
+logger = setup_logging()
 
 async def respond(update: Update, trigger: Trigger, chat_id: int) -> None:
     """Отправляет ответ в чат на основе конфигурации триггера.
