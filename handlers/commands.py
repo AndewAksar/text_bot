@@ -28,10 +28,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     chat_id = update.message.chat_id
     user_id = update.message.from_user.id
-    username = ALLOWED_USER_ID
-    group_chat_id = GROUP_CHAT_ID
+    username = update.message.from_user.username or "Unknown"
 
-    if chat_id != group_chat_id or user_id != username:
+    if chat_id != GROUP_CHAT_ID or user_id != ALLOWED_USER_ID:
         await update.message.reply_text("Доступ запрещён. Бот работает только для администратора в указанном чате.")
         logger.warning(f"Несанкционированный доступ: user_id={user_id}, chat_id={chat_id}")
         return
