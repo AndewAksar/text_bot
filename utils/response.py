@@ -1,8 +1,4 @@
-"""Утилиты для отправки ответов и обработки ошибок Telegram-бота.
-
-Содержит функции для отправки ответов на основе триггеров и обработки ошибок API.
-"""
-
+# response.py
 import logging
 import asyncio
 from telegram import Update

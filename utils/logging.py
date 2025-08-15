@@ -1,7 +1,4 @@
-"""Настройка логирования для приложения.
-
-Предоставляет функцию для инициализации логгера с единым форматом.
-"""
+# logging.py
 import logging
 import os
 from datetime import datetime

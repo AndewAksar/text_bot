@@ -1,8 +1,4 @@
-"""Точка входа для запуска Telegram-бота.
-
-Инициализирует приложение, регистрирует обработчики и запускает бота в режиме polling.
-"""
-
+# main.py
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 from config.bot import TOKEN
 from handlers.commands import start

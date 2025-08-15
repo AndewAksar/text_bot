@@ -1,8 +1,4 @@
-"""Конфигурация триггеров и ответов бота.
-
-Определяет класс Trigger для хранения триггеров и список TRIGGERS с настройками ответов.
-"""
-
+# triggers.py
 import random
 import os
 import json

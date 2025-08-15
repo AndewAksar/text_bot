@@ -1,8 +1,4 @@
-"""Обработчики команд Telegram-бота.
-
-Содержит обработчик команды /start.
-"""
-
+# commands.py
 import logging
 from os import environ
 from dotenv import load_dotenv
