@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: telegram_bot
     environment:
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
       - GROUP_CHAT_ID=${GROUP_CHAT_ID}
     volumes:
       - .:/app
